@@ -1,0 +1,67 @@
+#!/bin/bash
+: '
+Convenient hook to check the incoming changes to satisfy for flake8, flake8-docstrings, and mypy.
+All diff changes are copied to tmp directory and checked there.
+Also sets permissions to push to master branch only for specified server users.
+'
+declare -A git_masters
+git_masters['john_doe']=1
+git_masters['josh_smith']=1
+protected_branch='refs/heads/master'
+
+COMMAND='flake8'
+MYPY_COMMAND='mypy --ignore-missing'
+TEMPDIR=`mktemp -d`
+
+function linter_checks {
+  if [ $oldrev = 0000000000000000000000000000000000000000 ] ; then
+      files=`git diff --name-only master..${newrev}`
+  else
+      files=`git diff --name-only ${oldrev} ${newrev}`
+  fi
+
+  for file in ${files}; do
+      object=`git ls-tree --full-name -r ${newrev} | egrep "(\s)${file}\$" | awk '{ print $3 }'`
+
+      if [ -z ${object} ]; then continue; fi
+
+      mkdir -p "${TEMPDIR}/`dirname ${file}`" &> /dev/null
+      git cat-file blob ${object} > ${TEMPDIR}/${file}
+  done;
+}
+
+function mypy_check {
+    find ${TEMPDIR} -name "*.py" | while read line; do
+        ${MYPY_COMMAND} $line
+        if [ $? -eq 1 ]; then
+            return 1
+        fi
+    done;
+    return 0
+}
+
+while read oldrev newrev refname
+do
+    if [ $protected_branch == $refname ];
+    then
+        if [[ ${git_masters[$USER]} ]]; then
+            echo "Pushing into master..."
+            linter_checks $oldrev $newrev $refname
+        else
+            echo "Permission denied for user $USER. You cant't push into master branch :("
+            exit 1
+        fi
+    else
+        linter_checks $oldrev $newrev $refname
+        echo "Push into $refname by user $USER"
+    fi
+done
+
+git show HEAD:b2basket/server/b2basket/tox.ini > ${TEMPDIR}/tox.ini
+
+touch ${TEMPDIR}/mypy_pass_check_file.py
+
+STATUS=$(${COMMAND} ${TEMPDIR} && mypy_check)
+rm -rf ${TEMPDIR} &> /dev/null
+echo status $STATUS
+exit ${STATUS}
