@@ -3,6 +3,8 @@
 Convenient hook to check the incoming changes to satisfy for flake8, flake8-docstrings, and mypy.
 All diff changes are copied to tmp directory and checked there.
 Also sets permissions to push to master branch only for specified server users.
+
+Fill in git_masters array with your receive server users.
 '
 declare -A git_masters
 git_masters['john_doe']=1
