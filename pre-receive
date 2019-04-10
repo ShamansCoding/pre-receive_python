@@ -5,12 +5,14 @@ All diff changes are copied to tmp directory and checked there.
 Also sets permissions to push to master branch only for specified server users.
 
 Fill in git_masters array with your receive server users.
+Require tox.ini file(may be empty). Set path to it from project HEAD in PATH_TO_TOX.
 '
 declare -A git_masters
 git_masters['john_doe']=1
 git_masters['josh_smith']=1
 protected_branch='refs/heads/master'
 
+PATH_TO_TOX = 'my_project/'
 COMMAND='flake8'
 MYPY_COMMAND='mypy --ignore-missing'
 TEMPDIR=`mktemp -d`
@@ -59,7 +61,7 @@ do
     fi
 done
 
-git show HEAD:b2basket/server/b2basket/tox.ini > ${TEMPDIR}/tox.ini
+git show HEAD:${PATH_TO_TOX}tox.ini > ${TEMPDIR}/tox.ini
 
 touch ${TEMPDIR}/mypy_pass_check_file.py
 
